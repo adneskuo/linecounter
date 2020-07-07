@@ -1,8 +1,8 @@
 # wcc - linecounter
 
-wcc.exe はWindowsコンソールアプリケーションです。
+wcc.exe is a Windows console application.
 
-C/C++のソースコードを入力して、総行数とコメントを除いた行数を 'wc -l' に似た形式で表示します。
+You can enter the C/C++ source code and get the total number of lines and the number of lines excluding comments, in a format similar to 'wc -l' format.
 
 example)
 ```
@@ -12,3 +12,6 @@ $ wcc *.cpp
     110      75 C.cpp
    1650    1098 total
 ```
+
+### Note
+Strings enclosed in double quotation marks are not checked to parse comments.
