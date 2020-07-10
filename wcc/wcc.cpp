@@ -11,9 +11,9 @@ int main(int argc, char** argv)
 	}
 
 	size_t allLines = 0, allTotal = 0;
-	for (int i = 1; i < argc; i++) {
-		FILE *fp;
-		fopen_s(&fp, argv[i], "rt");
+	for (int i = argbegin; i <= argc; i++) {
+		if (fp == nullptr && i < argc)
+			fopen_s(&fp, argv[i], "rt");
 		if (fp) {
 			size_t total = 0;
 			size_t lines = 0;
@@ -94,17 +94,23 @@ int main(int argc, char** argv)
 					}
 				}
 			}
-			fclose(fp);
+			if (fp != stdin)
+				fclose(fp);
 
 			if (lines + comment != total) {
 				fprintf(stderr, "%s : total(%lu) != lines(%lu) + comments(%lu)", total, lines, comment);
 			}
-			printf("%7lu %7lu %s\n", total, lines, argv[i]);
+			if (!totalOnly && i < argc) {
+				printf("%7lu %7lu %s\n", total, lines, argv[i]);
+			}
 			allLines += lines;
 			allTotal += total;
+			if (fp == stdin)
+				break;
+			fp = nullptr;
 		}
 	}
-	printf("%7lu %7lu total\n", allTotal, allLines);
+	printf("%7lu %7lu%s\n", allTotal, allLines, totalOnly ? "" : " total");
 
 	return 0;
 }
