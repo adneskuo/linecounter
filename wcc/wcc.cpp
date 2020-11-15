@@ -4,10 +4,23 @@
 int main(int argc, char** argv)
 {
 	char buf[65535];
+	FILE *fp = stdin;
+	int argbegin;
+	bool totalOnly = false;
 
-	if (argc == 1) {
-		fprintf(stderr, "usage: %s <C-sourcefile> ...\n", argv[0]);
-		return 1;
+	for (argbegin=1; argbegin < argc && argv[argbegin][0] == '-'; argbegin++) {
+		switch (argv[argbegin][1]) {
+		case 't':
+			totalOnly = true;
+			break;
+		default:
+			fprintf(stderr, "usage: wcc [-t] [<C-sourcefile> [...]]\n", argv[0]);
+			fprintf(stderr, "-t output total count only\n");
+			return 1;
+		}
+	}
+	if (argbegin < argc) {
+		fp = nullptr;
 	}
 
 	size_t allLines = 0, allTotal = 0;
