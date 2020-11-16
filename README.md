@@ -13,5 +13,17 @@ $ wcc *.cpp
    1650    1098 total
 ```
 
+You can use a -t option, it outputs the total lines and lines_x_comments only.
+```
+$ wcc -t *.cpp
+   1650    1098
+```
+
+For python code, the --python option is useful.
+```
+$ wcc -t --python *.py
+   2500    1722
+```
+
 ### Note
 Strings enclosed in double quotation marks are not checked to parse comments.
