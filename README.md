@@ -2,7 +2,7 @@
 
 wcc.exe is a Windows console application.
 
-You can enter the C/C++ source code and get the total number of lines and the number of lines excluding comments, in a format similar to 'wc -l' format.
+You can enter the C/C++ or Python source code and get the total number of lines and the number of lines excluding comments, in a format similar to 'wc -l' format.
 
 example)
 ```
