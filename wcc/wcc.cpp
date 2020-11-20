@@ -7,14 +7,25 @@ int main(int argc, char** argv)
 	FILE *fp = stdin;
 	int argbegin;
 	bool totalOnly = false;
+	enum {
+		TypeC, TypePython,
+	} type = TypeC;
+	static const char *comm_lines[] = { "//\0", "#\0" };
+	static const char *comm_blks[] = { "/*\0*/\0", "'''\0'''\0\"\"\"\0\"\"\"\0" };
 
 	for (argbegin=1; argbegin < argc && argv[argbegin][0] == '-'; argbegin++) {
 		switch (argv[argbegin][1]) {
 		case 't':
 			totalOnly = true;
 			break;
+		case '-':
+			if (strcmp(argv[argbegin] + 2, "python") == 0) {
+				type = TypePython;
+				break;
+			}
+			// through break
 		default:
-			fprintf(stderr, "usage: wcc [-t] [<C-sourcefile> [...]]\n", argv[0]);
+			fprintf(stderr, "usage: wcc [-t] [--python] [<C-sourcefile> [...]]\n");
 			fprintf(stderr, "-t output total count only\n");
 			return 1;
 		}
@@ -22,6 +33,9 @@ int main(int argc, char** argv)
 	if (argbegin < argc) {
 		fp = nullptr;
 	}
+
+	const char *comm_line = comm_lines[type];
+	const char *comm_blk = comm_blks[type];
 
 	size_t allLines = 0, allTotal = 0;
 	for (int i = argbegin; i <= argc; i++) {
@@ -32,6 +46,7 @@ int main(int argc, char** argv)
 			size_t lines = 0;
 			size_t comment = 0;	// コメント行トータル
 			bool incomment = false;
+			const char* comm_blk_end = nullptr;
 			while (fgets(buf, sizeof(buf), fp)) {
 				total++;
 
@@ -46,7 +61,47 @@ int main(int argc, char** argv)
 					return p;
 				};
 
-				
+				// ブロックコメントの先頭を探して、対応するコメントブロックキーワードを返す				
+				auto strstr_blk = [](char* str, const char* comm, const char** comm_begin, const char** comm_end) -> char* {
+					const char* comm_found = nullptr;
+					char* str_found = nullptr;
+					while (*comm) {
+						char *pc = strstr(str, comm);
+						if (pc != nullptr) {
+							if (str_found == nullptr || str_found > pc) {
+								comm_found = comm;
+								str_found = pc;
+							}
+						}
+						comm = comm + strlen(comm) + 1;
+						comm = comm + strlen(comm) + 1;
+					}
+					if (str_found == nullptr)
+						return nullptr;
+					*comm_begin = comm_found;
+					*comm_end = comm_found + strlen(comm_found) + 1;
+					return str_found;
+				};
+
+				// 1行コメントを探す
+				auto strstr_line = [](char* str, const char* comm) -> char* {
+					const char* comm_found = nullptr;
+					char* str_found = nullptr;
+					while (*comm) {
+						char *pc = strstr(str, comm);
+						if (pc != nullptr) {
+							if (str_found == nullptr || str_found > pc) {
+								comm_found = comm;
+								str_found = pc;
+							}
+						}
+						comm = comm + strlen(comm) + 1;
+					}
+					if (str_found == nullptr)
+						return nullptr;
+					return str_found;
+				};
+
 				char *head = buf;
 				char *p = buf;
 				char *pc = nullptr;
@@ -59,8 +114,9 @@ int main(int argc, char** argv)
 					}
 
 					if (!incomment) {
-						pc = strstr(p, "/*");
-						if (char *pc2 = strstr(p, "//")) {
+						const char* comm_blk_begin;
+						pc = strstr_blk(p, comm_blk, &comm_blk_begin, &comm_blk_end);
+						if (char *pc2 = strstr_line(p, comm_line)) {
 							if (pc == nullptr || pc2 < pc) {	// 先に//があるのでそれ以降は削除
 								*pc2 = '\0';
 								continue;
@@ -68,8 +124,8 @@ int main(int argc, char** argv)
 						}
 						if (pc) {
 							incomment = true;
-							pc[0] = pc[1] = ' ';
-							p = pc + 2;
+							memset(pc, ' ', strlen(comm_blk_begin));
+							p = pc + strlen(comm_blk_begin);
 						}
 						else {
 							lines++;
@@ -77,17 +133,18 @@ int main(int argc, char** argv)
 						}
 					}
 					if (incomment) {
-						if (char *pce = strstr(p, "*/")) {
+						if (char *pce = strstr(p, comm_blk_end)) {
 							// コメントが終わった
 							if (pc) {
-								memset(pc, ' ', pce - pc + 2);	// 行内の部分コメントをスペースで埋める
+								memset(pc, ' ', pce - pc + strlen(comm_blk_end));	// 行内の部分コメントをスペースで埋める
 								pc = nullptr;
 							}
 							else {
-								memset(p, ' ', pce - p + 2);	// 行の先頭からスペースで埋める
+								memset(p, ' ', pce - p + strlen(comm_blk_end));	// 行の先頭からスペースで埋める
 							}
 							incomment = false;
-							p = pce + 2;
+							p = pce + strlen(comm_blk_end);
+							comm_blk_end = nullptr;
 						}
 						else {
 							// コメントが終わらない
@@ -111,7 +168,7 @@ int main(int argc, char** argv)
 				fclose(fp);
 
 			if (lines + comment != total) {
-				fprintf(stderr, "%s : total(%lu) != lines(%lu) + comments(%lu)", total, lines, comment);
+				fprintf(stderr, "%s : total(%lu) != lines(%lu) + comments(%lu)", argv[i], total, lines, comment);
 			}
 			if (!totalOnly && i < argc) {
 				printf("%7lu %7lu %s\n", total, lines, argv[i]);
